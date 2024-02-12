@@ -8,12 +8,13 @@ import Monomer
 import TextShow
 
 newtype AppModel = AppModel {
-  _clickCount :: Int
+  _imageOrder :: Bool
 } deriving (Eq, Show)
 
 data AppEvent
   = AppInit
-  | AppIncrease
+  | AppStartFirst
+  | AppStartSecond
   deriving (Eq, Show)
 
 makeLenses 'AppModel
@@ -24,14 +25,21 @@ buildUI
   -> WidgetNode AppModel AppEvent
 buildUI wenv model = widgetTree where
   widgetTree = vstack [
-      label "Hello world",
-      spacer,
       hstack [
-        label $ "Click count: " <> showt (model ^. clickCount),
-        spacer,
-        button "Increase count" AppIncrease
-      ]
+          button "Start anim1" AppStartFirst,
+          button "Start anim2" AppStartSecond
+        ],
+      spacer,
+      imageGrid
     ] `styleBasic` [padding 10]
+  imageGrid = vgrid $ zipWith makeAnimationNode nodeKeys images
+  makeAnimationNode key imageNode = animSlideIn imageNode `nodeKey` key
+  nodeKeys = ["anim1", "anim2"]
+  images = if model ^. imageOrder
+    then [image1, image2]
+    else [image2, image1]
+  image1 = image_ "assets/images/red-button.png" [fitEither, noDispose]
+  image2 = image_ "assets/images/red-button-hover.png" [fitEither, noDispose]
 
 handleEvent
   :: WidgetEnv AppModel AppEvent
@@ -41,7 +49,14 @@ handleEvent
   -> [AppEventResponse AppModel AppEvent]
 handleEvent wenv node model evt = case evt of
   AppInit -> []
-  AppIncrease -> [Model (model & clickCount +~ 1)]
+  AppStartFirst -> [
+      Model $ model & imageOrder %~ not,
+      Message "anim1" AnimationStart
+    ]
+  AppStartSecond -> [
+      Model $ model & imageOrder %~ not,
+      Message "anim2" AnimationStart
+    ]
 
 main :: IO ()
 main = do
@@ -55,4 +70,4 @@ main = do
       appInitEvent AppInit,
       appModelFingerprint show
       ]
-    model = AppModel 0
+    model = AppModel False
